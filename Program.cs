@@ -16,8 +16,6 @@ namespace WebsocketCore
     class Program
     {
         public static int WebsocketPort { get; set; }
-        public static int BufferSize { get; set; }
-
         private static log4net.ILog ProgLog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         static void Main(string[] args)
@@ -31,7 +29,6 @@ namespace WebsocketCore
             // Get command line parameters
             var command = Args.Configuration.Configure<ConsoleArgs>().CreateAndBind(args);
             WebsocketPort = command.Port;
-            BufferSize = command.BufferSize;
 
             // if HELP show options
             if (command.Help)
@@ -40,11 +37,11 @@ namespace WebsocketCore
                 ProgLog.Info("-----------------------------------------------------");
                 ProgLog.Info("\t/h\tShow this Help Info");
                 ProgLog.Info("\t/p\tWebsocket Port");
-                ProgLog.Info("\t/b\tBuffer Size (optional)");
                 ProgLog.Info("\t/d\tDebug Mode (optional)");
                 ProgLog.Info("-----------------------------------------------------");
-                ProgLog.Info("\texample: webrocket.exe /a 192.168.0.1 /p 9000 /b 512");
+                ProgLog.Info("\texample: webrocket.exe /p 9000");
                 ProgLog.Info("-----------------------------------------------------");
+                return;
             }            
 
             try

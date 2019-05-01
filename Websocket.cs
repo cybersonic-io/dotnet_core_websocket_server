@@ -18,13 +18,12 @@ namespace WebsocketCore
         private readonly IWebSocketServerFactory _webSocketServerFactory;
         private readonly HashSet<string> _supportedSubProtocols;
         private static readonly string WebSocket_Directory = Environment.CurrentDirectory;
-        private static readonly string Output_Directory = WebSocket_Directory + "\\Data\\";
         private static string Socket_IP { get; set; }
         private string DownloadFilename { get; set; }
 
         public enum Command : int
         {
-            ReceiveFile, DownloadFromTeamcenter, undefined = 9
+            ReceiveFile, SendMessage, undefined = 9
         };
 
         public struct ClientData
@@ -34,15 +33,12 @@ namespace WebsocketCore
         }
 
         // Create Log4Net ILog Object (Logfile)
-        public static log4net.ILog WebSocket = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        public static log4net.ILog WSLog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public WebsocketCore(IWebSocketServerFactory webSocketServerFactory, IList<string> supportedSubProtocols = null)
         {
             // Get Host IP Adress
             Socket_IP = GetLocalIPAddress();
-
-            // Check Output Directory
-            CheckDirectory(Output_Directory);
 
             // WebSocket
             _webSocketServerFactory = webSocketServerFactory;
@@ -62,14 +58,14 @@ namespace WebsocketCore
                 // (the client should pass the most preferable sub protocols first)
                 if (_supportedSubProtocols.Contains(subProtocol))
                 {
-                    WebSocket.Info($"<Message>: Http header has requested sub protocol {subProtocol} which is supported");
+                    WSLog.Info($"<Message>: Http header has requested sub protocol {subProtocol} which is supported");
 
                     return subProtocol;
                 }
             }
             if (requestedSubProtocols.Count > 0)
             {
-                WebSocket.Warn($"<Message>: Http header has requested the following sub protocols: " +
+                WSLog.Warn($"<Message>: Http header has requested the following sub protocols: " +
                     $"{string.Join(", ", requestedSubProtocols)}. There are no supported protocols configured that match.");
             }
             return null;
@@ -88,8 +84,8 @@ namespace WebsocketCore
                 // Client sends a close conection request OR
                 // An unhandled exception is thrown OR
                 // The server is disposed
-                WebSocket.Info("<Server>: Connection opened. Reading Http header from stream");
-                WebSocket.Info("-----------------------------------------------------------");
+                WSLog.Info("<Server>: Connection opened. Reading Http header from stream");
+                WSLog.Info("-----------------------------------------------------------");
 
                 // get a secure or insecure stream
                 Stream stream = tcpClient.GetStream();
@@ -98,21 +94,21 @@ namespace WebsocketCore
                 {
                     string subProtocol = GetSubProtocol(context.WebSocketRequestedProtocols);
                     var options = new WebSocketServerOptions() { KeepAliveInterval = TimeSpan.FromSeconds(30), SubProtocol = subProtocol };
-                    WebSocket.Info("<Message>: Http header has requested an upgrade to Web Socket protocol. Negotiating Web Socket handshake");
+                    WSLog.Info("<Message>: Http header has requested an upgrade to Web Socket protocol. Negotiating Web Socket handshake");
 
                     WebSocket webSocket = await _webSocketServerFactory.AcceptWebSocketAsync(context, options);
 
-                    WebSocket.Info("<Message>: Web Socket handshake response sent. Stream ready.");
+                    WSLog.Info("<Message>: Web Socket handshake response sent. Stream ready.");
                     await RespondToWebSocketRequestAsync(webSocket, source.Token);
                 }
                 else
                 {
-                    WebSocket.Info("<Message>: Http header contains no web socket upgrade request. Ignoring");
+                    WSLog.Info("<Message>: Http header contains no web socket upgrade request. Ignoring");
                 }
 
                 // closed connection
-                WebSocket.Info("-----------------------------------------------------------");
-                WebSocket.Info("<Server>: Connection closed.");
+                WSLog.Info("-----------------------------------------------------------");
+                WSLog.Info("<Server>: Connection closed.");
             }
             catch (ObjectDisposedException)
             {
@@ -120,7 +116,7 @@ namespace WebsocketCore
             }
             catch (Exception ex)
             {
-                WebSocket.Error(ex.ToString());
+                WSLog.Error(ex.ToString());
             }
             finally
             {
@@ -132,7 +128,7 @@ namespace WebsocketCore
                 }
                 catch (Exception ex)
                 {
-                    WebSocket.Error($"<Error>: failed to close TCP connection: {ex}");
+                    WSLog.Error($"<Error>: failed to close TCP connection: {ex}");
                 }
             }
         }
@@ -140,7 +136,7 @@ namespace WebsocketCore
         public async Task RespondToWebSocketRequestAsync(WebSocket webSocket, CancellationToken token)
         {
             // prepare Buffer - Length 512MB
-            int bufferLen = Program.BufferSize * 1024 * 1024;
+            int bufferLen = 512 * 1024 * 1024;
             ArraySegment<byte> buffer = new ArraySegment<byte>(new byte[bufferLen]);
 
             while (true)
@@ -154,7 +150,7 @@ namespace WebsocketCore
                 // client connection close
                 if (result.MessageType == WebSocketMessageType.Close)
                 {
-                    WebSocket.Info($"<Client>: initiated close. Status: {result.CloseStatus}"
+                    WSLog.Info($"<Client>: initiated close. Status: {result.CloseStatus}"
                         + " Description: {result.CloseStatusDescription}");
                     break;
                 }
@@ -164,15 +160,14 @@ namespace WebsocketCore
                 {
                     await webSocket.CloseAsync(WebSocketCloseStatus.MessageTooBig,
                         $"<Error>: Web socket frame cannot exceed buffer size "
-                        + "of {bufferLen:#,##0} bytes. Send multiple frames instead.",
-                        token);
+                        + "of {bufferLen:#,##0} bytes. Send multiple frames instead.", token);
                     break;
                 }
 
                 // message type text
                 if (result.MessageType == WebSocketMessageType.Text)
                 {
-                    WebSocket.Info("<TextData>: start processing...");
+                    WSLog.Info("<TextData>: start processing...");
                     string msg = Encoding.UTF8.GetString(buffer.Array, buffer.Offset, result.Count);
                     await ProcessTextMessage(msg, webSocket, token);
                 }
@@ -180,7 +175,7 @@ namespace WebsocketCore
                 // message type binary
                 if (result.MessageType == WebSocketMessageType.Binary)
                 {
-                    WebSocket.Info("<BinaryData>: start processing...");
+                    WSLog.Info("<BinaryData>: start processing...");
                     await ProcessBinaryData(buffer, result, webSocket, token);
                 }
             }
@@ -189,7 +184,7 @@ namespace WebsocketCore
         private async Task ProcessTextMessage(string msg,
             WebSocket webSocket, CancellationToken token)
         {
-            WebSocket.Info("<TextData>: {" + msg + "}");
+            WSLog.Info("<TextData>: {" + msg + "}");
             try
             {
                 // Split message and analyse
@@ -210,7 +205,7 @@ namespace WebsocketCore
                         break;
 
                     case 1:
-                        cData.ClientCommand = Command.DownloadFromTeamcenter;
+                        cData.ClientCommand = Command.SendMessage;
                         break;
 
                     default:
@@ -222,7 +217,7 @@ namespace WebsocketCore
             }
             catch (Exception ex)
             {
-                WebSocket.Error(ex.Message);
+                WSLog.Error(ex.Message);
             }
         }
 
@@ -245,12 +240,14 @@ namespace WebsocketCore
             switch (cd.ClientCommand)
             {
                 case Command.ReceiveFile:
+                    WSLog.Info("Processing... [ " + cd.ClientTextData + " ]");
                     DownloadFilename = Path.GetFileName(cd.ClientTextData).Trim();
-                    await SendMessage("0;0", webSocket, token);
+                    await SendMessage("0;received binary data command", webSocket, token);
                     break;
-
-                case Command.DownloadFromTeamcenter:
-                    await SendMessage("1;9", webSocket, token);
+                    
+                case Command.SendMessage:
+                    WSLog.Info("Received Message: [ " + cd.ClientTextData + " ]");
+                    await SendMessage("1;received send message command", webSocket, token);
                     break;
             }
         }
@@ -265,8 +262,9 @@ namespace WebsocketCore
             }
             if (DownloadFilename != "")
             {
+                WSLog.Info("Receiving and saving: " + DownloadFilename);
                 // write file to disk
-                SaveBinaryFile(Environment.CurrentDirectory + "\\Data\\" + DownloadFilename, allBytes);
+                SaveBinaryFile(Environment.CurrentDirectory + "\\downloads\\" + DownloadFilename, allBytes);
                 // Send transaction finished
                 await SendTransactionFinished(webSocket, token);
             }
@@ -280,7 +278,7 @@ namespace WebsocketCore
         /// <returns></returns>
         private async Task SendTransactionFinished(WebSocket webSocket, CancellationToken token)
         {
-            string fin_msg = "0;0";
+            string fin_msg = "0;File transfer successfully completed";
             await SendMessage(fin_msg, webSocket, token);
         }
 
@@ -375,7 +373,7 @@ namespace WebsocketCore
                 IPAddress ipaddress = IPAddress.Any;
                 _listener = new TcpListener(ipaddress, Program.WebsocketPort);
                 _listener.Start();
-                WebSocket.Info($"<Server>: listening on Port {Program.WebsocketPort}");
+                WSLog.Info($"<Server>: listening on Port {Program.WebsocketPort}");
                 while (true)
                 {
                     TcpClient tcpClient = await _listener.AcceptTcpClientAsync();
@@ -414,10 +412,10 @@ namespace WebsocketCore
                 }
                 catch (Exception ex)
                 {
-                    WebSocket.Error(ex.ToString());
+                    WSLog.Error(ex.ToString());
                 }
 
-                WebSocket.Info("Web Server shutdown...");
+                WSLog.Info("Web Server shutdown...");
             }
         }
     }
