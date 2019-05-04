@@ -5,16 +5,20 @@ A small .NET Core Websocket Server Testproject.
 #### To start use:
 
 ```
-dotnet run -- /h				// shows help
-dotnet run -- /p 9000			// start server @ Port 9000
+// shows help
+dotnet run -- /h
+
+// start server @ Port 9000
+dotnet run -- /p 9000
 ```
 
 #### Build with following command
 ```
-dotnet build					// standard build (dll)
-dotnet build -v q 				// quiet mode
-dotnet build -v d 				// debug mode
-dotnet build -r win10-x64 		// windows x64 build (websocket.exe)
+// standard build (dll)
+dotnet build
+
+// windows x64 build (websocket.exe)
+dotnet build -r win10-x64
 ```
 
 #### Restore Packages
