@@ -6,23 +6,23 @@ A small .NET Core Websocket Server Testproject.
 
 ```
 // shows help
-dotnet run -- /h
+**dotnet run -- /h**
 
 // start server @ Port 9000
-dotnet run -- /p 9000
+**dotnet run -- /p 9000**
 ```
 
 #### Build with following command
 ```
 // standard build (dll)
-dotnet build
+**dotnet build**
 
 // windows x64 build (websocket.exe)
-dotnet build -r win10-x64
+**dotnet build -r win10-x64**
 ```
 
 #### Restore Packages
 ```
-dotnet restore
+**dotnet restore**
 ```
 
