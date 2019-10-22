@@ -1,7 +1,7 @@
-# .NET Core Websocket Server
-
+# .NET Core Websocket Server 
 A small .NET Core Websocket Server Testproject.
 
+[![No Maintenance Intended](http://unmaintained.tech/badge.svg)](http://unmaintained.tech/)
 #### Usage:
 Show Help
 ```
