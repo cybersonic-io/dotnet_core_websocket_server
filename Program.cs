@@ -1,6 +1,5 @@
 ﻿using System;
 using System.IO;
-using System.Xml;
 using System.Reflection;
 using System.Threading.Tasks;
 
@@ -23,6 +22,8 @@ namespace WebsocketCore
             // Load log4net.config file with logging settings
             var logRepository = log4net.LogManager.GetRepository(Assembly.GetEntryAssembly());
             log4net.Config.XmlConfigurator.Configure(logRepository, new FileInfo("log4net.config"));
+
+            Screenshot.Take("Startbildschirm.png");
 
             ProgLog.Info("Starting Websocket Core ...");
 
