@@ -36,7 +36,7 @@ namespace WebsocketCore
                 // List of supported websocket protocols
                 IList<string> supportedSubProtocols = new string[] { "tccs" };
 
-                using (WebsocketCore server = new WebsocketCore(_webSocketServerFactory, supportedSubProtocols))
+                using (WebsocketCore.WebsocketServer server = new WebsocketCore.WebsocketServer(_webSocketServerFactory, supportedSubProtocols))
                 {
                     // Start Websocket listener
                     await server.Listen();

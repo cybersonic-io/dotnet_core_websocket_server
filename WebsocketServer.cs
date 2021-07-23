@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace WebsocketCore
 {
-    public class WebsocketCore : IDisposable
+    public class WebsocketServer : IDisposable
     {
         private TcpListener _listener;
         private bool _isDisposed = false;
@@ -35,7 +35,7 @@ namespace WebsocketCore
         // Create Log4Net ILog Object (Logfile)
         public static log4net.ILog WSLog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
-        public WebsocketCore(IWebSocketServerFactory webSocketServerFactory, IList<string> supportedSubProtocols = null)
+        public WebsocketServer(IWebSocketServerFactory webSocketServerFactory, IList<string> supportedSubProtocols = null)
         {
             // Get Host IP Adress
             Socket_IP = GetLocalIPAddress();
@@ -141,11 +141,19 @@ namespace WebsocketCore
 
             while (true)
             {
-                // reading data from stream
-                WebSocketReceiveResult result = await webSocket.ReceiveAsync(buffer, token);
-
+                WebSocketReceiveResult result;
+                try
+                {
+                    // reading data from stream
+                    result = await webSocket.ReceiveAsync(buffer, token);
+                } catch(Exception e)
+                {
+                    WSLog.Warn(e.Message);
+                    break;
+                }
                 // print message type
-                // WebSocket.Info("<MessageType>: " + result.MessageType);
+                //WSLog.Info("<CloseStatus>: " + result.CloseStatus);
+                //WSLog.Info("<Description>: " + result.CloseStatusDescription);
 
                 // client connection close
                 if (result.MessageType == WebSocketMessageType.Close)
